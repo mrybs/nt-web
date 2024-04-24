@@ -10,7 +10,7 @@ from ntml.ntml_parser import parse
 from ntml.tran import Tran
 
 
-def ntml_compile(ntml: str | bytes, fp: str) -> str:
+def ntml_compile(ntml: str | bytes, fp: str, meals: dict) -> str:
     """
     
     fucntion compile
@@ -22,6 +22,6 @@ def ntml_compile(ntml: str | bytes, fp: str) -> str:
     """
 
     ast = parse(ntml)
-    translator = Tran(ast, fp)
+    translator = Tran(ast, fp, meals=meals)
     translator.walk_tree()
     return translator.to_html()

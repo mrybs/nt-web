@@ -12,7 +12,7 @@ HTML, CSS, JS. На данный момент код на её языках пе
 традиционные языки нативно поддерживаются в самом коде
 
 Посесите оффициальную группу проекта: https://t.me/+ft6pYhYcqtk3NDdi'''.replace("\n", ""),
-      packages=['ntml', 'webfalco', 'ntcss'],
+      packages=['ntml'],
       license='GNU GPL 3.0',
       install_requires=['parglare', 'colorama'],
       author_email='talismanchet@vk.com',

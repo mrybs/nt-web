@@ -21,7 +21,17 @@ def tran_props(props: dict) -> str:
     ret: str = ""
 
     for i in props.keys():
-        ret += " "+i+"=\""+eval(props[i])+"\""
+        try:
+            if '"' not in props[i]:
+                ret += " "+i+"=\""+eval(props[i])+"\""
+            else:
+                ret += " "+i+"=\""+props[i].replace('"', '')+"\""
+        except SyntaxError:
+            ret += " "+i+"=\""+props[i].replace('"', '')+"\""
+        except NameError:
+            ret += " "+i+"=\""+props[i].replace('"', '')+"\""
+        except TypeError:
+            ret += " "+i+"=\""+props[i].replace('"', '')+"\""
     
     return ret
 
@@ -32,7 +42,7 @@ rels: dict = {
     "script": "script"
 }
 
-meals: dict = {
+MEALS: dict = {
     "body":        {"tag": "body"},
     "bold":        {"tag": "b"},
     "b":           {"tag": "b"},
@@ -275,7 +285,7 @@ class Tran:
     doctype: Doctype
     autospace: list[bool]
 
-    def __init__(self, tree, fp: str = "", initdt: Optional[dict] = None) -> None:
+    def __init__(self, tree, fp: str = "", initdt: Optional[dict] = None, meals = None) -> None:
         self.fp = fp
         self.tree: list[Node | list | Any] = tree
         self.adress = 0
@@ -287,6 +297,9 @@ class Tran:
                 Meta("charset", "UTF-8")]
         }
         self.autospace = [True]
+        self.meals = MEALS.copy()
+        if meals is not None:
+            self.meals |= meals.copy()
 
     def to_html(self) -> str:
         """
@@ -305,6 +318,7 @@ class Tran:
         self.cache = self.walk_subtree(self.tree)
     
     def walk_subtree(self, node: Optional[Node | list] = None):
+        
         """
         Implements recursive HTML caching
         @param node: Optional[Node | list]
@@ -336,14 +350,19 @@ class Tran:
             
             elif node.kind == "tag":
                 data = node.data
+                data["props"] = data["props"] if data["props"] is not None else ({}, [])
 
                 tkind = data["type"].strip()
                 tprops = data["props"]
-                if "props" in list(meals[tkind]):
-                    for prop in list(meals[tkind]["props"]):
-                        meals[tkind]["props"][prop] = f'\"{meals[tkind]["props"][prop]}\"'
-                    tprops = (meals[tkind]["props"], data["props"][1])
+                if "props" in list(self.meals[tkind]):
+                    tprops = (self.meals[tkind]["props"][0].copy(), data["props"][1])
+                    btprops = (self.meals[tkind]["props"][0].copy(), data["props"][1])
                     tprops[0].update(data["props"][0])
+                    for i in btprops[0].keys():
+                        if i in data["props"][0].keys():
+                            tprops[0][i] = btprops[0][i] + ' ' + data["props"][0][i]
+                        else:
+                            tprops[0][i] = btprops[0][i]
 
                 tbody = data["body"]
 
@@ -415,25 +434,25 @@ class Tran:
                 if tkind in "script scr".split():
                     self.autospace.pop()
                     del tprops[0]["lang"]
-                    ret = SimpleTagOpen(meals[tkind]["tag"], tprops).to_html()
+                    ret = SimpleTagOpen(self.meals[tkind]["tag"], tprops).to_html()
                     if tbody and "href" not in tprops[0]:
-                        ret += tbody + SimpleTagClose(meals[tkind]["tag"]).to_html()
+                        ret += tbody + SimpleTagClose(self.meals[tkind]["tag"]).to_html()
                     return ret
 
                 if not tbody:
                     if tkind in "hld holder".split():
-                        r = SimpleTagOpen(meals[tkind]["tag"],
-                                          tprops).to_html()[:-5]+SimpleTagClose(meals[tkind]["tag"]).to_html()
+                        r = SimpleTagOpen(self.meals[tkind]["tag"],
+                                          tprops).to_html()[:-5]+SimpleTagClose(self.meals[tkind]["tag"]).to_html()
                     else:
-                        r = SimpleTagOpen(meals[tkind]["tag"], tprops).to_html()
+                        r = SimpleTagOpen(self.meals[tkind]["tag"], tprops).to_html()
                 elif tkind in "table tab".split():
                     r = SimpleTagOpen("table", {}).to_html()+SimpleTagOpen("tbody", tprops).to_html() + \
                         self.walk_subtree(tbody).strip().replace("\n", "\n    ")+SimpleTagClose("tbody").to_html() + \
                         SimpleTagClose("table").to_html()
                 else:
-                    r = SimpleTagOpen(meals[tkind]["tag"], tprops).to_html() + \
+                    r = SimpleTagOpen(self.meals[tkind]["tag"], tprops).to_html() + \
                         self.walk_subtree(tbody).strip().replace("\n", "\n    ") + \
-                        SimpleTagClose(meals[tkind]["tag"]).to_html()
+                        SimpleTagClose(self.meals[tkind]["tag"]).to_html()
                     # print(r)
                 self.autospace.pop()
                 return r
